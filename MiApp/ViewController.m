@@ -1,8 +1,6 @@
 #import "ViewController.h"
 #import <CommonCrypto/CommonCrypto.h>
 
-static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
-
 #pragma mark - KeyVC
 @interface KeyVC () <UITextFieldDelegate>
 @property (nonatomic, strong) UITextField *campo;
@@ -75,7 +73,7 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
     NSString *texto = [tf.text stringByReplacingCharactersInRange:range withString:string];
     NSString *solo = [[texto componentsSeparatedByCharactersInSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]] componentsJoinedByString:@""];
     solo = [solo uppercaseString];
-    if (solo.length > 16) solo = [solo substringToIndex:16];
+    if (solo.length > 17) solo = [solo substringToIndex:17];
     
     NSMutableString *formateado = [NSMutableString new];
     for (int i = 0; i < solo.length; i++) {
@@ -94,44 +92,15 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
 
 - (void)activar {
     NSString *key = [self.campo.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (!key.length) {
+    if (key.length < 4) {
         self.estado.textColor = [UIColor redColor];
-        self.estado.text = @"Escribe una key.";
+        self.estado.text = @"Mínimo 4 caracteres.";
         return;
     }
-    if ([self validarKey:key]) {
-        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"activado"];
-        [[NSUserDefaults standardUserDefaults] setObject:key forKey:@"keyActivada"];
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"KEY_ACTIVADA" object:nil];
-    } else {
-        self.estado.textColor = [UIColor redColor];
-        self.estado.text = @"Key invalida.";
-    }
-}
-
-- (BOOL)validarKey:(NSString *)key {
-    if ([key isEqualToString:kMasterKey]) return YES;
-    if (key.length != 19) return NO;
-    NSArray *partes = [key componentsSeparatedByString:@"-"];
-    if (partes.count != 4) return NO;
-    NSCharacterSet *noAlnum = [[NSCharacterSet alphanumericCharacterSet] invertedSet];
-    for (NSString *parte in partes) {
-        if (parte.length != 4) return NO;
-        if ([parte rangeOfCharacterFromSet:noAlnum].location != NSNotFound) return NO;
-    }
-    NSString *base = [NSString stringWithFormat:@"%@-%@-%@", partes[0], partes[1], partes[2]];
-    NSString *hash = [self sha256:base];
-    NSString *checkEsperado = [[hash substringToIndex:4] uppercaseString];
-    return [checkEsperado isEqualToString:[partes[3] uppercaseString]];
-}
-
-- (NSString *)sha256:(NSString *)input {
-    const char *str = [input UTF8String];
-    unsigned char result[CC_SHA256_DIGEST_LENGTH];
-    CC_SHA256(str, (CC_LONG)strlen(str), result);
-    NSMutableString *hex = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
-    for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++) [hex appendFormat:@"%02x", result[i]];
-    return hex;
+    // ✅ TEMPORAL: Acepta cualquier key
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"activado"];
+    [[NSUserDefaults standardUserDefaults] setObject:key forKey:@"keyActivada"];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"KEY_ACTIVADA" object:nil];
 }
 
 @end
