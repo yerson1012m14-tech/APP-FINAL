@@ -17,17 +17,17 @@
     self.title = @"MiFilza";
     
     UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, self.view.bounds.size.width-40, 40)];
-    t.text = @"🔒 Introduce tu Key"; 
-    t.textColor = ACCENT; 
-    t.font = [UIFont boldSystemFontOfSize:22]; 
+    t.text = @" Introduce tu Key";
+    t.textColor = ACCENT;
+    t.font = [UIFont boldSystemFontOfSize:22];
     t.textAlignment = NSTextAlignmentCenter;
     [self.view addSubview:t];
     
     self.campo = [[UITextField alloc] initWithFrame:CGRectMake(30, 160, self.view.bounds.size.width-60, 44)];
     self.campo.placeholder = @"XXXX-XXXX-XXXX-XXXX";
-    self.campo.backgroundColor = CELL; 
+    self.campo.backgroundColor = CELL;
     self.campo.textColor = [UIColor whiteColor];
-    self.campo.layer.cornerRadius = 8; 
+    self.campo.layer.cornerRadius = 8;
     self.campo.textAlignment = NSTextAlignmentCenter;
     self.campo.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
     self.campo.delegate = self;
@@ -36,8 +36,8 @@
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     b.frame = CGRectMake(30, 220, self.view.bounds.size.width-60, 44);
     [b setTitle:@"ACTIVAR" forState:UIControlStateNormal];
-    b.backgroundColor = ACCENT; 
-    b.layer.cornerRadius = 8; 
+    b.backgroundColor = ACCENT;
+    b.layer.cornerRadius = 8;
     b.titleLabel.font = [UIFont boldSystemFontOfSize:16];
     [b setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
     [b addTarget:self action:@selector(activar) forControlEvents:UIControlEventTouchUpInside];
@@ -47,27 +47,27 @@
 - (BOOL)textField:(UITextField *)tf shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
     NSString *t = [tf.text stringByReplacingCharactersInRange:range withString:string];
     NSString *s = [[t componentsSeparatedByCharactersInSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]] componentsJoinedByString:@""];
-    s = [s uppercaseString]; 
+    s = [s uppercaseString];
     if (s.length > 16) s = [s substringToIndex:16];
     NSMutableString *f = [NSMutableString new];
-    for (int i=0; i<s.length; i++) { 
-        if (i>0 && i%4==0) [f appendString:@"-"]; 
-        [f appendFormat:@"%C", [s characterAtIndex:i]]; 
+    for (int i=0; i<s.length; i++) {
+        if (i>0 && i%4==0) [f appendString:@"-"];
+        [f appendFormat:@"%C", [s characterAtIndex:i]];
     }
-    tf.text = f; 
+    tf.text = f;
     return NO;
 }
 
 - (void)activar {
-    if (self.campo.text.length < 4) { 
-        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Mínimo 4 caracteres" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]; 
-        [a show]; 
-        return; 
+    if (self.campo.text.length < 4) {
+        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Mínimo 4 caracteres" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        [a show];
+        return;
     }
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"activado"];
     [[NSUserDefaults standardUserDefaults] setObject:self.campo.text forKey:@"keyActivada"];
     
-    MainVC *main = [MainVC new];
+    MainVC *main = [[MainVC alloc] initWithStyle:UITableViewStylePlain];
     [self.navigationController pushViewController:main animated:YES];
 }
 @end
@@ -75,52 +75,66 @@
 #pragma mark - MainVC
 @interface MainVC ()
 @property (nonatomic, strong) NSArray *appsCache;
+@property (nonatomic, assign) BOOL appsLoaded;
 @end
 
 @implementation MainVC
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"MiFilza"; 
+    self.title = @"MiFilza";
     self.view.backgroundColor = BG;
-    self.tableView.backgroundColor = BG; 
+    self.tableView.backgroundColor = BG;
     self.tableView.separatorColor = [UIColor darkGrayColor];
+    self.appsCache = @[];
+    self.appsLoaded = NO;
     
-    // 🔧 ARREGLO: Cargar apps UNA SOLA VEZ al entrar, no cada vez que se dibuja la celda
-    @try {
-        self.appsCache = [Motor appsInstaladas];
-    } @catch(...) {
-        self.appsCache = @[];
-    }
+    // Botón para cargar apps manualmente (NO automático)
+    UIBarButtonItem *loadBtn = [[UIBarButtonItem alloc] initWithTitle:@"Cargar Apps" style:UIBarButtonItemStylePlain target:self action:@selector(cargarApps)];
+    loadBtn.tintColor = ACCENT;
+    self.navigationItem.rightBarButtonItem = loadBtn;
+}
+
+- (void)cargarApps {
+    // Solo se ejecuta cuando TÚ lo pides
+    self.appsCache = [Motor appsInstaladas];
     if (!self.appsCache) self.appsCache = @[];
+    self.appsLoaded = YES;
+    [self.tableView reloadData];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 3; }
 
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-    if (s==0) return 3; 
-    if (s==1) return self.appsCache.count; 
+    if (s==0) return 3;
+    if (s==1) return self.appsLoaded ? self.appsCache.count : 1;
     return 4;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"c"];
     if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"c"];
-    c.backgroundColor = CELL; 
-    c.textLabel.textColor = [UIColor whiteColor]; 
+    c.backgroundColor = CELL;
+    c.textLabel.textColor = [UIColor whiteColor];
     c.detailTextLabel.textColor = [UIColor grayColor];
     
     if (ip.section==0) {
         NSArray *tit = @[@"🛸 Raíz del Sistema", @"📂 Documentos", @"️ Preferencias"];
         NSArray *sub = @[@"/", @"/var/mobile/Documents", @"/var/mobile/Library/Preferences"];
-        c.textLabel.text = tit[ip.row]; 
+        c.textLabel.text = tit[ip.row];
         c.detailTextLabel.text = sub[ip.row];
     } else if (ip.section==1) {
-        if (ip.row < self.appsCache.count) {
-            c.textLabel.text = self.appsCache[ip.row]; 
+        if (!self.appsLoaded) {
+            c.textLabel.text = @"Toca 'Cargar Apps' arriba";
+            c.detailTextLabel.text = @"para ver la lista";
+        } else if (self.appsCache.count == 0) {
+            c.textLabel.text = @"Sin apps (Sandbox activo)";
+            c.detailTextLabel.text = @"El motor no está inyectado";
+        } else {
+            c.textLabel.text = self.appsCache[ip.row];
             c.detailTextLabel.text = @"Bundle ID";
         }
     } else {
-        NSArray *tit = @[@"📱 HWID", @"⚙️ Ajustes", @"🛡️ Anti-Captura", @"🚪 Cerrar Sesión"];
+        NSArray *tit = @[@"📱 HWID", @"⚙️ Ajustes", @"🛡️ Anti-Captura", @" Cerrar Sesión"];
         c.textLabel.text = tit[ip.row];
         if (ip.row == 3) c.textLabel.textColor = [UIColor redColor];
     }
@@ -131,23 +145,21 @@
     [tv deselectRowAtIndexPath:ip animated:YES];
     if (ip.section==0) {
         NSArray *paths = @[@"/", @"/var/mobile/Documents", @"/var/mobile/Library/Preferences"];
-        FilesVC *f = [FilesVC new]; 
-        f.currentPath = paths[ip.row]; 
+        FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
+        f.currentPath = paths[ip.row];
         f.title = [tv cellForRowAtIndexPath:ip].textLabel.text;
         [self.navigationController pushViewController:f animated:YES];
-    } else if (ip.section==1) {
-        if (ip.row < self.appsCache.count) {
-            NSString *bid = self.appsCache[ip.row];
-            NSString *ruta = [Motor rutaDeApp:bid];
-            if (ruta && ruta.length > 0) { 
-                FilesVC *f = [FilesVC new]; 
-                f.currentPath = ruta; 
-                f.title = bid; 
-                [self.navigationController pushViewController:f animated:YES]; 
-            } else { 
-                UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Aviso" message:@"No se pudo obtener la ruta (Sandbox)" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]; 
-                [a show]; 
-            }
+    } else if (ip.section==1 && self.appsLoaded && ip.row < self.appsCache.count) {
+        NSString *bid = self.appsCache[ip.row];
+        NSString *ruta = [Motor rutaDeApp:bid];
+        if (ruta && ruta.length > 0) {
+            FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
+            f.currentPath = ruta;
+            f.title = bid;
+            [self.navigationController pushViewController:f animated:YES];
+        } else {
+            UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Aviso" message:@"Ruta no disponible" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+            [a show];
         }
     } else if (ip.section==2 && ip.row==3) {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"activado"];
@@ -160,31 +172,33 @@
 @implementation FilesVC
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = BG; 
-    self.tableView.backgroundColor = BG; 
+    self.view.backgroundColor = BG;
+    self.tableView.backgroundColor = BG;
     self.tableView.separatorColor = [UIColor darkGrayColor];
 }
 
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-    @try { return [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil].count; } 
-    @catch(...) { return 0; }
+    @try {
+        NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
+        return items ? items.count : 0;
+    } @catch(...) { return 0; }
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"f"];
     if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"f"];
-    c.backgroundColor = CELL; 
-    c.textLabel.textColor = [UIColor whiteColor]; 
+    c.backgroundColor = CELL;
+    c.textLabel.textColor = [UIColor whiteColor];
     c.detailTextLabel.textColor = [UIColor grayColor];
     
     @try {
         NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
-        if (ip.row < items.count) {
+        if (items && ip.row < items.count) {
             NSString *name = items[ip.row];
             NSString *full = [self.currentPath stringByAppendingPathComponent:name];
-            BOOL isDir = NO; 
+            BOOL isDir = NO;
             [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-            c.textLabel.text = isDir ? [@"📁 " stringByAppendingString:name] : [@" " stringByAppendingString:name];
+            c.textLabel.text = isDir ? [@"📁 " stringByAppendingString:name] : [@"📄 " stringByAppendingString:name];
             c.detailTextLabel.text = isDir ? @"Carpeta" : @"Archivo";
         }
     } @catch(...) {}
@@ -195,16 +209,16 @@
     [tv deselectRowAtIndexPath:ip animated:YES];
     @try {
         NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
-        if (ip.row < items.count) {
+        if (items && ip.row < items.count) {
             NSString *name = items[ip.row];
             NSString *full = [self.currentPath stringByAppendingPathComponent:name];
-            BOOL isDir = NO; 
+            BOOL isDir = NO;
             [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-            if (isDir) { 
-                FilesVC *f = [FilesVC new]; 
-                f.currentPath = full; 
-                f.title = name; 
-                [self.navigationController pushViewController:f animated:YES]; 
+            if (isDir) {
+                FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
+                f.currentPath = full;
+                f.title = name;
+                [self.navigationController pushViewController:f animated:YES];
             }
         }
     } @catch(...) {}
