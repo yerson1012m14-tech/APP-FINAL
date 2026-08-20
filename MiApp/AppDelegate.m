@@ -1,5 +1,6 @@
 #import "AppDelegate.h"
 #import "ViewController.h"
+#import "WebVC.h"
 
 @implementation AppDelegate
 
@@ -27,9 +28,9 @@
 
 - (void)mostrarRaiz {
     BOOL activado = [[NSUserDefaults standardUserDefaults] boolForKey:@"activado"];
-    UIViewController *root = activado ? (UIViewController *)[ViewController new] : (UIViewController *)[KeyVC new];
+    UIViewController *root = activado ? (UIViewController *)[WebVC new] : (UIViewController *)[KeyVC new];
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:root];
-    nav.navigationBarHidden = !activado;
+    nav.navigationBarHidden = YES;
     self.window.rootViewController = nav;
 }
 
