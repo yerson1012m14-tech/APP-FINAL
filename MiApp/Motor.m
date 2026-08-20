@@ -20,11 +20,6 @@
 + (NSString *)rutaDeApp:(NSString *)bundleId {
     [self encender];
     @try {
-        NSString *(*dataPath)(NSString *) = dlsym(RTLD_DEFAULT, "MCMFilzaDataContainerPath");
-        if (dataPath) {
-            NSString *p = dataPath(bundleId);
-            if (p) return p;
-        }
         Class ws = NSClassFromString(@"LSApplicationWorkspace");
         if (ws) {
             id space = [ws performSelector:@selector(defaultWorkspace)];
@@ -32,8 +27,8 @@
             for (id app in apps) {
                 NSString *bid = [app performSelector:@selector(applicationIdentifier)];
                 if ([bid isEqualToString:bundleId]) {
-                    NSString *path = [app performSelector:@selector(containerURL)];
-                    if (path) return path;
+                    NSURL *url = [app performSelector:@selector(containerURL)];
+                    if (url) return [url path]; //  ARREGLO: Convertir NSURL a NSString
                 }
             }
         }
