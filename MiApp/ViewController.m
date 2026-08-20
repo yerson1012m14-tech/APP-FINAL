@@ -46,7 +46,7 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
     self.campo.layer.borderWidth = 1;
     self.campo.layer.borderColor = [UIColor colorWithWhite:0.25 alpha:1.0].CGColor;
     self.campo.textColor = [UIColor whiteColor];
-    self.campo.font = [UIFont fontWithName:@"Menlo" size:14];
+    self.campo.font = [UIFont fontWithName:@"Menlo-Bold" size:16];
     self.campo.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
     self.campo.autocorrectionType = UITextAutocorrectionTypeNo;
     self.campo.returnKeyType = UIReturnKeyGo;
@@ -71,6 +71,21 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
     [self.view addSubview:self.estado];
 }
 
+- (BOOL)textField:(UITextField *)tf shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
+    NSString *texto = [tf.text stringByReplacingCharactersInRange:range withString:string];
+    NSString *solo = [[texto componentsSeparatedByCharactersInSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]] componentsJoinedByString:@""];
+    solo = [solo uppercaseString];
+    if (solo.length > 16) solo = [solo substringToIndex:16];
+    
+    NSMutableString *formateado = [NSMutableString new];
+    for (int i = 0; i < solo.length; i++) {
+        if (i > 0 && i % 4 == 0) [formateado appendString:@"-"];
+        [formateado appendFormat:@"%C", [solo characterAtIndex:i]];
+    }
+    tf.text = formateado;
+    return NO;
+}
+
 - (BOOL)textFieldShouldReturn:(UITextField *)tf {
     [tf resignFirstResponder];
     [self activar];
@@ -84,7 +99,6 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
         self.estado.text = @"Escribe una key.";
         return;
     }
-    
     if ([self validarKey:key]) {
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"activado"];
         [[NSUserDefaults standardUserDefaults] setObject:key forKey:@"keyActivada"];
@@ -98,22 +112,17 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
 - (BOOL)validarKey:(NSString *)key {
     if ([key isEqualToString:kMasterKey]) return YES;
     if (key.length != 19) return NO;
-    
     NSArray *partes = [key componentsSeparatedByString:@"-"];
     if (partes.count != 4) return NO;
-    
     NSCharacterSet *noAlnum = [[NSCharacterSet alphanumericCharacterSet] invertedSet];
     for (NSString *parte in partes) {
         if (parte.length != 4) return NO;
         if ([parte rangeOfCharacterFromSet:noAlnum].location != NSNotFound) return NO;
     }
-    
     NSString *base = [NSString stringWithFormat:@"%@-%@-%@", partes[0], partes[1], partes[2]];
     NSString *hash = [self sha256:base];
     NSString *checkEsperado = [[hash substringToIndex:4] uppercaseString];
-    NSString *checkRecibido = [partes[3] uppercaseString];
-    
-    return [checkEsperado isEqualToString:checkRecibido];
+    return [checkEsperado isEqualToString:[partes[3] uppercaseString]];
 }
 
 - (NSString *)sha256:(NSString *)input {
@@ -121,9 +130,7 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256(str, (CC_LONG)strlen(str), result);
     NSMutableString *hex = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
-    for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++) {
-        [hex appendFormat:@"%02x", result[i]];
-    }
+    for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++) [hex appendFormat:@"%02x", result[i]];
     return hex;
 }
 
@@ -137,34 +144,25 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
     self.view.backgroundColor = [UIColor blackColor];
     self.title = @"MiFilza";
     
-    UILabel *mensaje = [[UILabel alloc] initWithFrame:CGRectMake(40, 200, self.view.bounds.size.width - 80, 60)];
-    mensaje.text = @"✅ Key activada correctamente";
-    mensaje.textAlignment = NSTextAlignmentCenter;
-    mensaje.textColor = [UIColor colorWithRed:0.2 green:1.0 blue:0.5 alpha:1.0];
-    mensaje.font = [UIFont fontWithName:@"Menlo-Bold" size:18];
-    mensaje.numberOfLines = 0;
-    [self.view addSubview:mensaje];
+    UILabel *m = [[UILabel alloc] initWithFrame:CGRectMake(40, 200, self.view.bounds.size.width - 80, 60)];
+    m.text = @"✅ Key activada";
+    m.textAlignment = NSTextAlignmentCenter;
+    m.textColor = [UIColor colorWithRed:0.2 green:1.0 blue:0.5 alpha:1.0];
+    m.font = [UIFont fontWithName:@"Menlo-Bold" size:18];
+    [self.view addSubview:m];
     
-    NSString *key = [[NSUserDefaults standardUserDefaults] stringForKey:@"keyActivada"];
-    UILabel *keyLabel = [[UILabel alloc] initWithFrame:CGRectMake(40, 280, self.view.bounds.size.width - 80, 40)];
-    keyLabel.text = [NSString stringWithFormat:@"Key: %@", key ?: @"N/A"];
-    keyLabel.textAlignment = NSTextAlignmentCenter;
-    keyLabel.textColor = [UIColor grayColor];
-    keyLabel.font = [UIFont fontWithName:@"Menlo" size:12];
-    [self.view addSubview:keyLabel];
-    
-    UIButton *cerrar = [UIButton buttonWithType:UIButtonTypeSystem];
-    cerrar.frame = CGRectMake(40, 350, self.view.bounds.size.width - 80, 46);
-    [cerrar setTitle:@"CERRAR SESIÓN" forState:UIControlStateNormal];
-    [cerrar setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
-    cerrar.titleLabel.font = [UIFont fontWithName:@"Menlo-Bold" size:14];
-    cerrar.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
-    cerrar.layer.cornerRadius = 10;
-    [cerrar addTarget:self action:@selector(cerrarSesion) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:cerrar];
+    UIButton *c = [UIButton buttonWithType:UIButtonTypeSystem];
+    c.frame = CGRectMake(40, 300, self.view.bounds.size.width - 80, 46);
+    [c setTitle:@"CERRAR SESIÓN" forState:UIControlStateNormal];
+    [c setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
+    c.titleLabel.font = [UIFont fontWithName:@"Menlo-Bold" size:14];
+    c.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
+    c.layer.cornerRadius = 10;
+    [c addTarget:self action:@selector(cerrar) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:c];
 }
 
-- (void)cerrarSesion {
+- (void)cerrar {
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"activado"];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"keyActivada"];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"KEY_ACTIVADA" object:nil];
