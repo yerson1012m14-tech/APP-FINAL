@@ -134,3 +134,10 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
 @end
 
 @implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor blackColor];
+}
+
+@end
