@@ -16,14 +16,16 @@
     self.view.backgroundColor = BG;
     self.title = @"MiFilza";
     
-    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, self.view.bounds.size.width-40, 40)];
+    CGFloat w = [UIScreen mainScreen].bounds.size.width;
+    
+    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, w-40, 40)];
     t.text = @" Introduce tu Key";
     t.textColor = ACCENT;
     t.font = [UIFont boldSystemFontOfSize:22];
     t.textAlignment = NSTextAlignmentCenter;
     [self.view addSubview:t];
     
-    self.campo = [[UITextField alloc] initWithFrame:CGRectMake(30, 160, self.view.bounds.size.width-60, 44)];
+    self.campo = [[UITextField alloc] initWithFrame:CGRectMake(30, 160, w-60, 44)];
     self.campo.placeholder = @"XXXX-XXXX-XXXX-XXXX";
     self.campo.backgroundColor = CELL;
     self.campo.textColor = [UIColor whiteColor];
@@ -34,7 +36,7 @@
     [self.view addSubview:self.campo];
     
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-    b.frame = CGRectMake(30, 220, self.view.bounds.size.width-60, 44);
+    b.frame = CGRectMake(30, 220, w-60, 44);
     [b setTitle:@"ACTIVAR" forState:UIControlStateNormal];
     b.backgroundColor = ACCENT;
     b.layer.cornerRadius = 8;
@@ -60,7 +62,7 @@
 
 - (void)activar {
     if (self.campo.text.length < 4) {
-        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Mínimo 4 caracteres" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Minimo 4 caracteres" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
         [a show];
         return;
     }
@@ -75,15 +77,22 @@
 #pragma mark - MainVC
 @interface MainVC () <UITextFieldDelegate>
 @property (nonatomic, strong) UITextField *bundleField;
+@property (nonatomic, assign) BOOL loaded;
 @end
 
 @implementation MainVC
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    self.title = @"MiFilza";
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    if (!self.loaded) {
+        [self setupUI];
+        self.loaded = YES;
+    }
+}
+
+- (void)setupUI {
     self.view.backgroundColor = BG;
     
-    CGFloat w = self.view.bounds.size.width;
+    CGFloat w = [UIScreen mainScreen].bounds.size.width;
     
     UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 80, w-40, 30)];
     t.text = @"Bundle ID de la App";
@@ -115,7 +124,7 @@
     
     UIButton *logout = [UIButton buttonWithType:UIButtonTypeSystem];
     logout.frame = CGRectMake(30, 260, w-60, 44);
-    [logout setTitle:@"Cerrar Sesión" forState:UIControlStateNormal];
+    [logout setTitle:@"Cerrar Sesion" forState:UIControlStateNormal];
     logout.backgroundColor = [UIColor redColor];
     logout.layer.cornerRadius = 8;
     [logout setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
