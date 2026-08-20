@@ -7,7 +7,6 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
 @property (nonatomic, strong) UITextField *campo;
 @property (nonatomic, strong) UIButton *boton;
 @property (nonatomic, strong) UILabel *estado;
-@property (nonatomic, strong) UILabel *titulo;
 @end
 
 @implementation KeyVC
@@ -25,22 +24,22 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
     lock.contentMode = UIViewContentModeScaleAspectFit;
     [self.view addSubview:lock];
     
-    self.titulo = [[UILabel alloc] initWithFrame:CGRectMake(0, y + 90, w, 40)];
-    self.titulo.text = @"MiFilza";
-    self.titulo.textAlignment = NSTextAlignmentCenter;
-    self.titulo.textColor = [UIColor colorWithRed:0.2 green:1.0 blue:0.5 alpha:1.0];
-    self.titulo.font = [UIFont fontWithName:@"Menlo-Bold" size:32];
-    [self.view addSubview:self.titulo];
+    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(0, y + 90, w, 40)];
+    t.text = @"MiFilza";
+    t.textAlignment = NSTextAlignmentCenter;
+    t.textColor = [UIColor colorWithRed:0.2 green:1.0 blue:0.5 alpha:1.0];
+    t.font = [UIFont fontWithName:@"Menlo-Bold" size:32];
+    [self.view addSubview:t];
     
-    UILabel *sub = [[UILabel alloc] initWithFrame:CGRectMake(0, y + 135, w, 20)];
-    sub.text = @"Introduce tu key de acceso";
-    sub.textAlignment = NSTextAlignmentCenter;
-    sub.textColor = [UIColor grayColor];
-    sub.font = [UIFont fontWithName:@"Menlo" size:12];
-    [self.view addSubview:sub];
+    UILabel *s = [[UILabel alloc] initWithFrame:CGRectMake(0, y + 135, w, 20)];
+    s.text = @"Introduce tu key de acceso";
+    s.textAlignment = NSTextAlignmentCenter;
+    s.textColor = [UIColor grayColor];
+    s.font = [UIFont fontWithName:@"Menlo" size:12];
+    [self.view addSubview:s];
     
     self.campo = [[UITextField alloc] initWithFrame:CGRectMake(40, y + 175, w - 80, 46)];
-    self.campo.placeholder = @"KEY-XXXX-0000";
+    self.campo.placeholder = @"XXXX-XXXX-XXXX-XXXX";
     self.campo.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
     self.campo.layer.cornerRadius = 10;
     self.campo.layer.borderWidth = 1;
@@ -96,18 +95,29 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
 }
 
 - (BOOL)validarKey:(NSString *)key {
+    // 1. Master key
     if ([key isEqualToString:kMasterKey]) return YES;
     
-    if (key.length < 10) return NO;
+    // 2. Formato exacto: XXXX-XXXX-XXXX-XXXX (19 caracteres)
+    if (key.length != 19) return NO;
     
     NSArray *partes = [key componentsSeparatedByString:@"-"];
-    if (partes.count != 3) return NO;
+    if (partes.count != 4) return NO;
     
-    NSString *hash = [self sha256:key];
-    NSString *check = [hash substringToIndex:4];
-    NSString *ultima = [partes lastObject];
+    // 3. Cada bloque debe tener 4 caracteres alfanuméricos
+    NSCharacterSet *noAlnum = [[NSCharacterSet alphanumericCharacterSet] invertedSet];
+    for (NSString *parte in partes) {
+        if (parte.length != 4) return NO;
+        if ([parte rangeOfCharacterFromSet:noAlnum].location != NSNotFound) return NO;
+    }
     
-    return [check isEqualToString:ultima];
+    // 4. Validar checksum (los primeros 3 bloques generan el 4to)
+    NSString *base = [NSString stringWithFormat:@"%@-%@-%@", partes[0], partes[1], partes[2]];
+    NSString *hash = [self sha256:base];
+    NSString *checkEsperado = [[hash substringToIndex:4] uppercaseString];
+    NSString *checkRecibido = [partes[3] uppercaseString];
+    
+    return [checkEsperado isEqualToString:checkRecibido];
 }
 
 - (NSString *)sha256:(NSString *)input {
@@ -124,10 +134,3 @@ static NSString *kMasterKey = @"MIFILZA-MASTER-2026";
 @end
 
 @implementation ViewController
-
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    self.view.backgroundColor = [UIColor blackColor];
-}
-
-@end
