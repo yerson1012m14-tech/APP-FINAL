@@ -66,11 +66,17 @@
     }
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"activado"];
     [[NSUserDefaults standardUserDefaults] setObject:self.campo.text forKey:@"keyActivada"];
-    [self.navigationController pushViewController:[MainVC new] animated:YES];
+    
+    MainVC *main = [MainVC new];
+    [self.navigationController pushViewController:main animated:YES];
 }
 @end
 
 #pragma mark - MainVC
+@interface MainVC ()
+@property (nonatomic, strong) NSArray *appsCache;
+@end
+
 @implementation MainVC
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -78,16 +84,21 @@
     self.view.backgroundColor = BG;
     self.tableView.backgroundColor = BG; 
     self.tableView.separatorColor = [UIColor darkGrayColor];
+    
+    // 🔧 ARREGLO: Cargar apps UNA SOLA VEZ al entrar, no cada vez que se dibuja la celda
+    @try {
+        self.appsCache = [Motor appsInstaladas];
+    } @catch(...) {
+        self.appsCache = @[];
+    }
+    if (!self.appsCache) self.appsCache = @[];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 3; }
 
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
     if (s==0) return 3; 
-    if (s==1) { 
-        @try { return [[Motor appsInstaladas] count]; } 
-        @catch(...) { return 0; } 
-    } 
+    if (s==1) return self.appsCache.count; 
     return 4;
 }
 
@@ -99,17 +110,17 @@
     c.detailTextLabel.textColor = [UIColor grayColor];
     
     if (ip.section==0) {
-        NSArray *tit = @[@"🛸 Raíz del Sistema", @"📂 Documentos", @"⚙️ Preferencias"];
+        NSArray *tit = @[@"🛸 Raíz del Sistema", @"📂 Documentos", @"️ Preferencias"];
         NSArray *sub = @[@"/", @"/var/mobile/Documents", @"/var/mobile/Library/Preferences"];
         c.textLabel.text = tit[ip.row]; 
         c.detailTextLabel.text = sub[ip.row];
     } else if (ip.section==1) {
-        @try { 
-            c.textLabel.text = [[Motor appsInstaladas] objectAtIndex:ip.row]; 
-            c.detailTextLabel.text = @"Bundle ID"; 
-        } @catch(...) {}
+        if (ip.row < self.appsCache.count) {
+            c.textLabel.text = self.appsCache[ip.row]; 
+            c.detailTextLabel.text = @"Bundle ID";
+        }
     } else {
-        NSArray *tit = @[@"📱 HWID", @"⚙️ Ajustes", @"🛡️ Anti-Captura", @" Cerrar Sesión"];
+        NSArray *tit = @[@"📱 HWID", @"⚙️ Ajustes", @"🛡️ Anti-Captura", @"🚪 Cerrar Sesión"];
         c.textLabel.text = tit[ip.row];
         if (ip.row == 3) c.textLabel.textColor = [UIColor redColor];
     }
@@ -125,8 +136,8 @@
         f.title = [tv cellForRowAtIndexPath:ip].textLabel.text;
         [self.navigationController pushViewController:f animated:YES];
     } else if (ip.section==1) {
-        @try {
-            NSString *bid = [[Motor appsInstaladas] objectAtIndex:ip.row];
+        if (ip.row < self.appsCache.count) {
+            NSString *bid = self.appsCache[ip.row];
             NSString *ruta = [Motor rutaDeApp:bid];
             if (ruta && ruta.length > 0) { 
                 FilesVC *f = [FilesVC new]; 
@@ -134,10 +145,10 @@
                 f.title = bid; 
                 [self.navigationController pushViewController:f animated:YES]; 
             } else { 
-                UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Ruta no disponible" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]; 
+                UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Aviso" message:@"No se pudo obtener la ruta (Sandbox)" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]; 
                 [a show]; 
             }
-        } @catch(...) {}
+        }
     } else if (ip.section==2 && ip.row==3) {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"activado"];
         [self.navigationController popToRootViewControllerAnimated:YES];
@@ -167,12 +178,15 @@
     c.detailTextLabel.textColor = [UIColor grayColor];
     
     @try {
-        NSString *name = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil][ip.row];
-        NSString *full = [self.currentPath stringByAppendingPathComponent:name];
-        BOOL isDir = NO; 
-        [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-        c.textLabel.text = isDir ? [@"📁 " stringByAppendingString:name] : [@" " stringByAppendingString:name];
-        c.detailTextLabel.text = isDir ? @"Carpeta" : @"Archivo";
+        NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
+        if (ip.row < items.count) {
+            NSString *name = items[ip.row];
+            NSString *full = [self.currentPath stringByAppendingPathComponent:name];
+            BOOL isDir = NO; 
+            [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
+            c.textLabel.text = isDir ? [@"📁 " stringByAppendingString:name] : [@" " stringByAppendingString:name];
+            c.detailTextLabel.text = isDir ? @"Carpeta" : @"Archivo";
+        }
     } @catch(...) {}
     return c;
 }
@@ -180,15 +194,18 @@
 - (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
     [tv deselectRowAtIndexPath:ip animated:YES];
     @try {
-        NSString *name = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil][ip.row];
-        NSString *full = [self.currentPath stringByAppendingPathComponent:name];
-        BOOL isDir = NO; 
-        [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-        if (isDir) { 
-            FilesVC *f = [FilesVC new]; 
-            f.currentPath = full; 
-            f.title = name; 
-            [self.navigationController pushViewController:f animated:YES]; 
+        NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
+        if (ip.row < items.count) {
+            NSString *name = items[ip.row];
+            NSString *full = [self.currentPath stringByAppendingPathComponent:name];
+            BOOL isDir = NO; 
+            [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
+            if (isDir) { 
+                FilesVC *f = [FilesVC new]; 
+                f.currentPath = full; 
+                f.title = name; 
+                [self.navigationController pushViewController:f animated:YES]; 
+            }
         }
     } @catch(...) {}
 }
