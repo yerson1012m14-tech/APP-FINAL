@@ -73,9 +73,8 @@
 @end
 
 #pragma mark - MainVC
-@interface MainVC ()
-@property (nonatomic, strong) NSArray *appsCache;
-@property (nonatomic, assign) BOOL appsLoaded;
+@interface MainVC () <UITextFieldDelegate>
+@property (nonatomic, strong) UITextField *bundleField;
 @end
 
 @implementation MainVC
@@ -83,88 +82,77 @@
     [super viewDidLoad];
     self.title = @"MiFilza";
     self.view.backgroundColor = BG;
-    self.tableView.backgroundColor = BG;
-    self.tableView.separatorColor = [UIColor darkGrayColor];
-    self.appsCache = @[];
-    self.appsLoaded = NO;
     
-    // Botón para cargar apps manualmente (NO automático)
-    UIBarButtonItem *loadBtn = [[UIBarButtonItem alloc] initWithTitle:@"Cargar Apps" style:UIBarButtonItemStylePlain target:self action:@selector(cargarApps)];
-    loadBtn.tintColor = ACCENT;
-    self.navigationItem.rightBarButtonItem = loadBtn;
-}
-
-- (void)cargarApps {
-    // Solo se ejecuta cuando TÚ lo pides
-    self.appsCache = [Motor appsInstaladas];
-    if (!self.appsCache) self.appsCache = @[];
-    self.appsLoaded = YES;
-    [self.tableView reloadData];
-}
-
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 3; }
-
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-    if (s==0) return 3;
-    if (s==1) return self.appsLoaded ? self.appsCache.count : 1;
-    return 4;
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
-    UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"c"];
-    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"c"];
-    c.backgroundColor = CELL;
-    c.textLabel.textColor = [UIColor whiteColor];
-    c.detailTextLabel.textColor = [UIColor grayColor];
+    CGFloat w = self.view.bounds.size.width;
     
-    if (ip.section==0) {
-        NSArray *tit = @[@"🛸 Raíz del Sistema", @"📂 Documentos", @"️ Preferencias"];
-        NSArray *sub = @[@"/", @"/var/mobile/Documents", @"/var/mobile/Library/Preferences"];
-        c.textLabel.text = tit[ip.row];
-        c.detailTextLabel.text = sub[ip.row];
-    } else if (ip.section==1) {
-        if (!self.appsLoaded) {
-            c.textLabel.text = @"Toca 'Cargar Apps' arriba";
-            c.detailTextLabel.text = @"para ver la lista";
-        } else if (self.appsCache.count == 0) {
-            c.textLabel.text = @"Sin apps (Sandbox activo)";
-            c.detailTextLabel.text = @"El motor no está inyectado";
-        } else {
-            c.textLabel.text = self.appsCache[ip.row];
-            c.detailTextLabel.text = @"Bundle ID";
-        }
-    } else {
-        NSArray *tit = @[@"📱 HWID", @"⚙️ Ajustes", @"🛡️ Anti-Captura", @" Cerrar Sesión"];
-        c.textLabel.text = tit[ip.row];
-        if (ip.row == 3) c.textLabel.textColor = [UIColor redColor];
+    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 80, w-40, 30)];
+    t.text = @"Bundle ID de la App";
+    t.textColor = ACCENT;
+    t.font = [UIFont boldSystemFontOfSize:18];
+    t.textAlignment = NSTextAlignmentCenter;
+    [self.view addSubview:t];
+    
+    self.bundleField = [[UITextField alloc] initWithFrame:CGRectMake(30, 130, w-60, 44)];
+    self.bundleField.placeholder = @"com.ejemplo.app";
+    self.bundleField.backgroundColor = CELL;
+    self.bundleField.textColor = [UIColor whiteColor];
+    self.bundleField.layer.cornerRadius = 8;
+    self.bundleField.textAlignment = NSTextAlignmentCenter;
+    self.bundleField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    self.bundleField.autocorrectionType = UITextAutocorrectionTypeNo;
+    self.bundleField.delegate = self;
+    [self.view addSubview:self.bundleField];
+    
+    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
+    b.frame = CGRectMake(30, 190, w-60, 44);
+    [b setTitle:@"ABRIR APP" forState:UIControlStateNormal];
+    b.backgroundColor = ACCENT;
+    b.layer.cornerRadius = 8;
+    b.titleLabel.font = [UIFont boldSystemFontOfSize:16];
+    [b setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    [b addTarget:self action:@selector(abrirApp) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:b];
+    
+    UIButton *logout = [UIButton buttonWithType:UIButtonTypeSystem];
+    logout.frame = CGRectMake(30, 260, w-60, 44);
+    [logout setTitle:@"Cerrar Sesión" forState:UIControlStateNormal];
+    logout.backgroundColor = [UIColor redColor];
+    logout.layer.cornerRadius = 8;
+    [logout setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [logout addTarget:self action:@selector(cerrarSesion) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:logout];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)tf {
+    [tf resignFirstResponder];
+    [self abrirApp];
+    return YES;
+}
+
+- (void)abrirApp {
+    NSString *bid = [self.bundleField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (bid.length == 0) {
+        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Escribe un Bundle ID" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        [a show];
+        return;
     }
-    return c;
-}
-
-- (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
-    [tv deselectRowAtIndexPath:ip animated:YES];
-    if (ip.section==0) {
-        NSArray *paths = @[@"/", @"/var/mobile/Documents", @"/var/mobile/Library/Preferences"];
+    
+    NSString *ruta = [Motor rutaDeApp:bid];
+    if (ruta && ruta.length > 0) {
         FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
-        f.currentPath = paths[ip.row];
-        f.title = [tv cellForRowAtIndexPath:ip].textLabel.text;
+        f.currentPath = ruta;
+        f.title = bid;
         [self.navigationController pushViewController:f animated:YES];
-    } else if (ip.section==1 && self.appsLoaded && ip.row < self.appsCache.count) {
-        NSString *bid = self.appsCache[ip.row];
-        NSString *ruta = [Motor rutaDeApp:bid];
-        if (ruta && ruta.length > 0) {
-            FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
-            f.currentPath = ruta;
-            f.title = bid;
-            [self.navigationController pushViewController:f animated:YES];
-        } else {
-            UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Aviso" message:@"Ruta no disponible" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-            [a show];
-        }
-    } else if (ip.section==2 && ip.row==3) {
-        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"activado"];
-        [self.navigationController popToRootViewControllerAnimated:YES];
+    } else {
+        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"No encontrado" message:[NSString stringWithFormat:@"No se pudo obtener la ruta de:\n%@", bid] delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        [a show];
     }
+}
+
+- (void)cerrarSesion {
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"activado"];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"keyActivada"];
+    [self.navigationController popToRootViewControllerAnimated:YES];
 }
 @end
 
@@ -198,7 +186,7 @@
             NSString *full = [self.currentPath stringByAppendingPathComponent:name];
             BOOL isDir = NO;
             [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-            c.textLabel.text = isDir ? [@"📁 " stringByAppendingString:name] : [@"📄 " stringByAppendingString:name];
+            c.textLabel.text = isDir ? [@" " stringByAppendingString:name] : [@"📄 " stringByAppendingString:name];
             c.detailTextLabel.text = isDir ? @"Carpeta" : @"Archivo";
         }
     } @catch(...) {}
