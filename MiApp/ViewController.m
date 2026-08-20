@@ -1,223 +1,285 @@
 #import "ViewController.h"
-#import "Motor.h"
+#import <dlfcn.h>
 
-#define ACCENT [UIColor colorWithRed:0.2 green:1.0 blue:0.5 alpha:1.0]
-#define BG [UIColor blackColor]
-#define CELL [UIColor colorWithRed:0.05 green:0.07 blue:0.06 alpha:1.0]
+static void asegurarMotor(void) {
+    static BOOL on = NO;
+    if (on) return;
+    on = YES;
+    void (*tweakInit)(void) = dlsym(RTLD_DEFAULT, "TweakInit");
+    int (*start)(void) = dlsym(RTLD_DEFAULT, "MCMFilzaStart");
+    void (*setUnres)(int) = dlsym(RTLD_DEFAULT, "MCMFilzaSetUnrestrictedFilesystem");
+    if (tweakInit) tweakInit();
+    if (start) start();
+    if (setUnres) setUnres(1);
+}
 
-#pragma mark - KeyVC
-@interface KeyVC () <UITextFieldDelegate>
-@property (nonatomic, strong) UITextField *campo;
+static NSString *containerPath(NSString *bid) {
+    NSString *(*dataPath)(NSString *) = dlsym(RTLD_DEFAULT, "MCMFilzaDataContainerPath");
+    return dataPath ? dataPath(bid) : nil;
+}
+
+static NSString *fmtSize(unsigned long long b) {
+    if (b < 1024) return [NSString stringWithFormat:@"%llu B", b];
+    if (b < 1024 * 1024) return [NSString stringWithFormat:@"%.1f KB", b / 1024.0];
+    if (b < 1024 * 1024 * 1024) return [NSString stringWithFormat:@"%.1f MB", b / (1024.0 * 1024.0)];
+    return [NSString stringWithFormat:@"%.2f GB", b / (1024.0 * 1024.0 * 1024.0)];
+}
+
+static void ponerIcono(UITableViewCell *c, NSString *nombre, UIColor *tinte) {
+    c.imageView.image = [[UIImage systemImageNamed:nombre] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    c.imageView.tintColor = tinte;
+}
+
+static UIColor *colorFondo(void) { return [UIColor colorWithWhite:0.05 alpha:1.0]; }
+static UIColor *acento(void) { return [UIColor colorWithRed:0.2 green:1.0 blue:0.5 alpha:1.0]; }
+
+#pragma mark - Visor de texto
+@interface TextViewVC : UIViewController
+@property (nonatomic, strong) NSString *ruta;
 @end
-
-@implementation KeyVC
+@implementation TextViewVC
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = BG;
+    self.view.backgroundColor = [UIColor blackColor];
+    self.title = self.ruta.lastPathComponent;
+    UITextView *tv = [[UITextView alloc] initWithFrame:self.view.bounds];
+    tv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    tv.editable = NO;
+    tv.textColor = acento();
+    tv.backgroundColor = [UIColor blackColor];
+    tv.font = [UIFont fontWithName:@"Menlo" size:11];
+    tv.contentInset = UIEdgeInsetsMake(10, 10, 10, 10);
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:self.ruta error:nil];
+    unsigned long long size = [[attrs objectForKey:@"NSFileSize"] unsignedLongLongValue];
+    if (size > 2 * 1024 * 1024) {
+        tv.text = [NSString stringWithFormat:@"(archivo demasiado grande: %@)", fmtSize(size)];
+    } else {
+        NSData *d = [NSData dataWithContentsOfFile:self.ruta];
+        NSString *s = d ? [[NSString alloc] initWithData:d encoding:NSUTF8StringEncoding] : nil;
+        tv.text = s ?: [NSString stringWithFormat:@"(binario, %@)", fmtSize(size)];
+    }
+    [self.view addSubview:tv];
+}
+@end
+
+#pragma mark - Navegador de carpetas
+@interface FileBrowserVC : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@property (nonatomic, strong) NSString *ruta;
+@property (nonatomic, strong) NSArray *items;
+@property (nonatomic, strong) UITableView *tv;
+@end
+@implementation FileBrowserVC
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = colorFondo();
+    self.title = self.ruta.lastPathComponent;
+    self.tv = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
+    self.tv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.tv.backgroundColor = colorFondo();
+    self.tv.separatorColor = [UIColor colorWithWhite:0.2 alpha:1.0];
+    self.tv.dataSource = self;
+    self.tv.delegate = self;
+    [self.view addSubview:self.tv];
+    [self recargar];
+}
+- (void)recargar {
+    NSMutableArray *dirs = [NSMutableArray new], *files = [NSMutableArray new];
+    NSArray *all = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.ruta error:nil];
+    for (NSString *n in [all sortedArrayUsingSelector:@selector(localizedStandardCompare:)]) {
+        BOOL isDir = NO;
+        [[NSFileManager defaultManager] fileExistsAtPath:[self.ruta stringByAppendingPathComponent:n] isDirectory:&isDir];
+        if (isDir) { [dirs addObject:n]; } else { [files addObject:n]; }
+    }
+    NSMutableArray *fin = [NSMutableArray new];
+    if (![self.ruta isEqualToString:@"/"]) [fin addObject:@".."];
+    [fin addObjectsFromArray:dirs];
+    [fin addObjectsFromArray:files];
+    self.items = fin;
+    [self.tv reloadData];
+}
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return self.items.count; }
+- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
+    UITableViewCell *c = [t dequeueReusableCellWithIdentifier:@"c"];
+    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"c"];
+    c.backgroundColor = colorFondo();
+    c.selectedBackgroundView = [UIView new];
+    c.selectedBackgroundView.backgroundColor = [UIColor colorWithWhite:0.15 alpha:1.0];
+    NSString *n = self.items[ip.row];
+    c.textLabel.text = n;
+    c.textLabel.font = [UIFont fontWithName:@"Menlo" size:13];
+    c.detailTextLabel.font = [UIFont fontWithName:@"Menlo" size:10];
+    c.detailTextLabel.textColor = [UIColor grayColor];
+    if ([n isEqualToString:@".."]) {
+        ponerIcono(c, @"arrow.uturn.left", [UIColor grayColor]);
+        c.textLabel.textColor = [UIColor grayColor];
+        c.detailTextLabel.text = @"subir";
+        c.accessoryType = UITableViewCellAccessoryNone;
+    } else if ([self esDir:n]) {
+        ponerIcono(c, @"folder.fill", [UIColor cyanColor]);
+        c.textLabel.textColor = [UIColor cyanColor];
+        c.detailTextLabel.text = @"carpeta";
+        c.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    } else {
+        ponerIcono(c, @"doc.fill", [UIColor lightGrayColor]);
+        c.textLabel.textColor = [UIColor whiteColor];
+        NSDictionary *a = [[NSFileManager defaultManager] attributesOfItemAtPath:[self.ruta stringByAppendingPathComponent:n] error:nil];
+        c.detailTextLabel.text = fmtSize([[a objectForKey:@"NSFileSize"] unsignedLongLongValue]);
+        c.accessoryType = UITableViewCellAccessoryNone;
+    }
+    return c;
+}
+- (BOOL)esDir:(NSString *)n {
+    BOOL isDir = NO;
+    [[NSFileManager defaultManager] fileExistsAtPath:[self.ruta stringByAppendingPathComponent:n] isDirectory:&isDir];
+    return isDir;
+}
+- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)ip {
+    [t deselectRowAtIndexPath:ip animated:YES];
+    NSString *n = self.items[ip.row];
+    if ([n isEqualToString:@".."]) { [self.navigationController popViewControllerAnimated:YES]; return; }
+    NSString *full = [self.ruta stringByAppendingPathComponent:n];
+    if ([self esDir:n]) {
+        FileBrowserVC *fb = [FileBrowserVC new];
+        fb.ruta = full;
+        [self.navigationController pushViewController:fb animated:YES];
+    } else {
+        TextViewVC *tv = [TextViewVC new];
+        tv.ruta = full;
+        [self.navigationController pushViewController:tv animated:YES];
+    }
+}
+@end
+
+#pragma mark - Pantalla principal
+@interface ViewController () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate>
+@property (nonatomic, strong) UITableView *tv;
+@property (nonatomic, strong) UITextField *campo;
+@property (nonatomic, strong) NSMutableArray *apps;
+@property (nonatomic, strong) UILabel *vacioLabel;
+@end
+@implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = colorFondo();
     self.title = @"MiFilza";
-    
-    CGFloat w = [UIScreen mainScreen].bounds.size.width;
-    
-    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, w-40, 40)];
-    t.text = @" Introduce tu Key";
-    t.textColor = ACCENT;
-    t.font = [UIFont boldSystemFontOfSize:22];
-    t.textAlignment = NSTextAlignmentCenter;
-    [self.view addSubview:t];
-    
-    self.campo = [[UITextField alloc] initWithFrame:CGRectMake(30, 160, w-60, 44)];
-    self.campo.placeholder = @"XXXX-XXXX-XXXX-XXXX";
-    self.campo.backgroundColor = CELL;
+
+    self.apps = [NSMutableArray new];
+    self.tv = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
+    self.tv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.tv.backgroundColor = colorFondo();
+    self.tv.separatorColor = [UIColor colorWithWhite:0.2 alpha:1.0];
+    self.tv.dataSource = self;
+    self.tv.delegate = self;
+
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 50)];
+    header.backgroundColor = colorFondo();
+    self.campo = [[UITextField alloc] initWithFrame:CGRectMake(12, 7, header.bounds.size.width - 24, 36)];
+    self.campo.placeholder = @"bundle id manual + return";
+    self.campo.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
+    self.campo.layer.cornerRadius = 10;
+    self.campo.layer.borderWidth = 1;
+    self.campo.layer.borderColor = [UIColor colorWithWhite:0.25 alpha:1.0].CGColor;
     self.campo.textColor = [UIColor whiteColor];
-    self.campo.layer.cornerRadius = 8;
-    self.campo.textAlignment = NSTextAlignmentCenter;
-    self.campo.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
+    self.campo.font = [UIFont fontWithName:@"Menlo" size:12];
+    self.campo.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    self.campo.autocorrectionType = UITextAutocorrectionTypeNo;
+    self.campo.returnKeyType = UIReturnKeyDone;
     self.campo.delegate = self;
-    [self.view addSubview:self.campo];
-    
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-    b.frame = CGRectMake(30, 220, w-60, 44);
-    [b setTitle:@"ACTIVAR" forState:UIControlStateNormal];
-    b.backgroundColor = ACCENT;
-    b.layer.cornerRadius = 8;
-    b.titleLabel.font = [UIFont boldSystemFontOfSize:16];
-    [b setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    [b addTarget:self action:@selector(activar) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:b];
+    UIImageView *lupa = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 24, 20)];
+    lupa.image = [[UIImage systemImageNamed:@"magnifyingglass"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    lupa.tintColor = [UIColor grayColor];
+    lupa.contentMode = UIViewContentModeCenter;
+    self.campo.leftView = lupa;
+    self.campo.leftViewMode = UITextFieldViewModeAlways;
+    [header addSubview:self.campo];
+    self.tv.tableHeaderView = header;
+    [self.view addSubview:self.tv];
+
+    self.vacioLabel = [[UILabel alloc] initWithFrame:CGRectMake(30, 120, self.view.bounds.size.width - 60, 90)];
+    self.vacioLabel.numberOfLines = 0;
+    self.vacioLabel.textAlignment = NSTextAlignmentCenter;
+    self.vacioLabel.textColor = [UIColor grayColor];
+    self.vacioLabel.font = [UIFont fontWithName:@"Menlo" size:12];
+    self.vacioLabel.text = @"No se detectaron apps.\nEscribe arriba el bundle ID\nde una app INSTALADA.";
+    self.vacioLabel.hidden = YES;
+    [self.view addSubview:self.vacioLabel];
+
+    [self cargarApps];
 }
 
-- (BOOL)textField:(UITextField *)tf shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
-    NSString *t = [tf.text stringByReplacingCharactersInRange:range withString:string];
-    NSString *s = [[t componentsSeparatedByCharactersInSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]] componentsJoinedByString:@""];
-    s = [s uppercaseString];
-    if (s.length > 16) s = [s substringToIndex:16];
-    NSMutableString *f = [NSMutableString new];
-    for (int i=0; i<s.length; i++) {
-        if (i>0 && i%4==0) [f appendString:@"-"];
-        [f appendFormat:@"%C", [s characterAtIndex:i]];
-    }
-    tf.text = f;
-    return NO;
-}
+- (void)cargarApps {
+    NSMutableOrderedSet *set = [NSMutableOrderedSet new];
+    @try {
+        Class ws = NSClassFromString(@"LSApplicationWorkspace");
+        if (ws && [ws respondsToSelector:@selector(defaultWorkspace)]) {
+            id workspace = [ws performSelector:@selector(defaultWorkspace)];
+            if (workspace && [workspace respondsToSelector:@selector(allApplications)]) {
+                NSArray *all = [workspace performSelector:@selector(allApplications)];
+                for (id proxy in all) {
+                    @try {
+                        if ([proxy respondsToSelector:@selector(applicationIdentifier)]) {
+                            NSString *bid = [proxy performSelector:@selector(applicationIdentifier)];
+                            if (bid && ![bid hasPrefix:@"com.apple."]) [set addObject:bid];
+                        }
+                    } @catch (NSException *e) {}
+                }
+            }
+        }
+    } @catch (NSException *e) {}
 
-- (void)activar {
-    if (self.campo.text.length < 4) {
-        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Minimo 4 caracteres" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-        [a show];
-        return;
-    }
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"activado"];
-    [[NSUserDefaults standardUserDefaults] setObject:self.campo.text forKey:@"keyActivada"];
-    
-    MainVC *main = [[MainVC alloc] initWithStyle:UITableViewStylePlain];
-    [self.navigationController pushViewController:main animated:YES];
-}
-@end
-
-#pragma mark - MainVC
-@interface MainVC () <UITextFieldDelegate>
-@property (nonatomic, strong) UITextField *bundleField;
-@property (nonatomic, assign) BOOL loaded;
-@end
-
-@implementation MainVC
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    if (!self.loaded) {
-        [self setupUI];
-        self.loaded = YES;
-    }
-}
-
-- (void)setupUI {
-    self.view.backgroundColor = BG;
-    
-    CGFloat w = [UIScreen mainScreen].bounds.size.width;
-    
-    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(20, 80, w-40, 30)];
-    t.text = @"Bundle ID de la App";
-    t.textColor = ACCENT;
-    t.font = [UIFont boldSystemFontOfSize:18];
-    t.textAlignment = NSTextAlignmentCenter;
-    [self.view addSubview:t];
-    
-    self.bundleField = [[UITextField alloc] initWithFrame:CGRectMake(30, 130, w-60, 44)];
-    self.bundleField.placeholder = @"com.ejemplo.app";
-    self.bundleField.backgroundColor = CELL;
-    self.bundleField.textColor = [UIColor whiteColor];
-    self.bundleField.layer.cornerRadius = 8;
-    self.bundleField.textAlignment = NSTextAlignmentCenter;
-    self.bundleField.autocapitalizationType = UITextAutocapitalizationTypeNone;
-    self.bundleField.autocorrectionType = UITextAutocorrectionTypeNo;
-    self.bundleField.delegate = self;
-    [self.view addSubview:self.bundleField];
-    
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-    b.frame = CGRectMake(30, 190, w-60, 44);
-    [b setTitle:@"ABRIR APP" forState:UIControlStateNormal];
-    b.backgroundColor = ACCENT;
-    b.layer.cornerRadius = 8;
-    b.titleLabel.font = [UIFont boldSystemFontOfSize:16];
-    [b setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    [b addTarget:self action:@selector(abrirApp) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:b];
-    
-    UIButton *logout = [UIButton buttonWithType:UIButtonTypeSystem];
-    logout.frame = CGRectMake(30, 260, w-60, 44);
-    [logout setTitle:@"Cerrar Sesion" forState:UIControlStateNormal];
-    logout.backgroundColor = [UIColor redColor];
-    logout.layer.cornerRadius = 8;
-    [logout setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    [logout addTarget:self action:@selector(cerrarSesion) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:logout];
+    [self.apps addObjectsFromArray:[set array]];
+    [self.apps sortUsingSelector:@selector(localizedStandardCompare:)];
+    self.title = [NSString stringWithFormat:@"MiFilza (%lu)", (unsigned long)self.apps.count];
+    self.vacioLabel.hidden = (self.apps.count != 0);
+    [self.tv reloadData];
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)tf {
     [tf resignFirstResponder];
-    [self abrirApp];
+    [self abrirContenedor:tf.text];
     return YES;
 }
 
-- (void)abrirApp {
-    NSString *bid = [self.bundleField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (bid.length == 0) {
-        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Escribe un Bundle ID" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-        [a show];
-        return;
-    }
-    
-    NSString *ruta = [Motor rutaDeApp:bid];
-    if (ruta && ruta.length > 0) {
-        FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
-        f.currentPath = ruta;
-        f.title = bid;
-        [self.navigationController pushViewController:f animated:YES];
-    } else {
-        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"No encontrado" message:[NSString stringWithFormat:@"No se pudo obtener la ruta de:\n%@", bid] delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-        [a show];
-    }
-}
-
-- (void)cerrarSesion {
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"activado"];
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"keyActivada"];
-    [self.navigationController popToRootViewControllerAnimated:YES];
-}
-@end
-
-#pragma mark - FilesVC
-@implementation FilesVC
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    self.view.backgroundColor = BG;
-    self.tableView.backgroundColor = BG;
-    self.tableView.separatorColor = [UIColor darkGrayColor];
-}
-
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-    @try {
-        NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
-        return items ? items.count : 0;
-    } @catch(...) { return 0; }
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
-    UITableViewCell *c = [tv dequeueReusableCellWithIdentifier:@"f"];
-    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"f"];
-    c.backgroundColor = CELL;
-    c.textLabel.textColor = [UIColor whiteColor];
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return self.apps.count; }
+- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
+    UITableViewCell *c = [t dequeueReusableCellWithIdentifier:@"a"];
+    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"a"];
+    c.backgroundColor = colorFondo();
+    c.selectedBackgroundView = [UIView new];
+    c.selectedBackgroundView.backgroundColor = [UIColor colorWithWhite:0.15 alpha:1.0];
+    c.textLabel.text = self.apps[ip.row];
+    c.textLabel.textColor = acento();
+    c.textLabel.font = [UIFont fontWithName:@"Menlo" size:13];
+    c.detailTextLabel.text = @"toca para explorar";
     c.detailTextLabel.textColor = [UIColor grayColor];
-    
-    @try {
-        NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
-        if (items && ip.row < items.count) {
-            NSString *name = items[ip.row];
-            NSString *full = [self.currentPath stringByAppendingPathComponent:name];
-            BOOL isDir = NO;
-            [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-            c.textLabel.text = isDir ? [@" " stringByAppendingString:name] : [@"📄 " stringByAppendingString:name];
-            c.detailTextLabel.text = isDir ? @"Carpeta" : @"Archivo";
-        }
-    } @catch(...) {}
+    c.detailTextLabel.font = [UIFont fontWithName:@"Menlo" size:10];
+    ponerIcono(c, @"app.fill", acento());
+    c.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     return c;
 }
-
-- (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
-    [tv deselectRowAtIndexPath:ip animated:YES];
-    @try {
-        NSArray *items = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.currentPath error:nil];
-        if (items && ip.row < items.count) {
-            NSString *name = items[ip.row];
-            NSString *full = [self.currentPath stringByAppendingPathComponent:name];
-            BOOL isDir = NO;
-            [[NSFileManager defaultManager] fileExistsAtPath:full isDirectory:&isDir];
-            if (isDir) {
-                FilesVC *f = [[FilesVC alloc] initWithStyle:UITableViewStylePlain];
-                f.currentPath = full;
-                f.title = name;
-                [self.navigationController pushViewController:f animated:YES];
-            }
-        }
-    } @catch(...) {}
+- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)ip {
+    [t deselectRowAtIndexPath:ip animated:YES];
+    [self abrirContenedor:self.apps[ip.row]];
 }
+
+- (void)abrirContenedor:(NSString *)bid {
+    bid = [bid stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    if (!bid.length) return;
+    asegurarMotor();
+    NSString *p = nil;
+    @try { p = containerPath(bid); } @catch (NSException *e) { p = nil; }
+    if (!p) {
+        UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Sin contenedor"
+            message:[NSString stringWithFormat:@"%@ no devolvio ruta (no instalada?)", bid]
+            preferredStyle:UIAlertControllerStyleAlert];
+        [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+        [self presentViewController:a animated:YES completion:nil];
+        return;
+    }
+    FileBrowserVC *fb = [FileBrowserVC new];
+    fb.ruta = p;
+    [self.navigationController pushViewController:fb animated:YES];
+}
+
 @end
