@@ -7,7 +7,7 @@
     <key>CFBundleName</key>
     <string>MiApp</string>
     <key>CFBundleDisplayName</key>
-    <string>Mi filza</string>
+    <string>MiFilza</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundlePackageType</key>
@@ -19,10 +19,18 @@
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIRequiredDeviceCapabilities</key>
-    <array><string>armv7</string></array>
+    <array>
+        <string>arm64</string>
+    </array>
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UIStatusBarStyle</key>
+    <string>UIStatusBarStyleLightContent</string>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
 </dict>
 </plist>
