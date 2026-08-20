@@ -1,7 +1,11 @@
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
+@interface KeyVC : UIViewController
 @end
 
-@interface KeyVC : UIViewController
+@interface MainVC : UITableViewController
+@end
+
+@interface FilesVC : UITableViewController
+@property (nonatomic, strong) NSString *currentPath;
 @end
