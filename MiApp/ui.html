@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#000;--card:#0d1210;--borde:#1d2a24;--acc:#22ff88;--txt:#eafff4;--mut:#7a8a82;--rojo:#ff5555}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--txt);font-family:ui-monospace,Menlo,monospace;padding:calc(env(safe-area-inset-top,20px) + 14px) 16px 100px;max-width:520px;margin:0 auto}
+body{background:var(--bg);color:var(--txt);font-family:ui-monospace,Menlo,monospace;padding:calc(env(safe-area-inset-top,20px)+14px) 16px 100px;max-width:520px;margin:0 auto}
 .screen{display:none}.screen.active{display:block;animation:fin .2s}
 @keyframes fin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
@@ -42,7 +42,7 @@ h1{font-size:22px;letter-spacing:1px}h2{font-size:16px;flex:1;overflow:hidden;te
 .th.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .th i{display:block;width:16px;height:16px;border-radius:50%;margin-bottom:6px;border:1px solid #333}
 .th b{display:block;font-size:10px;margin-bottom:2px}.th small{color:var(--mut);font-size:9px}
-.tabbar{position:fixed;left:0;right:0;bottom:0;background:rgba(5,8,7,.92);backdrop-filter:blur(12px);border-top:1px solid var(--borde);padding:10px 20px calc(env(safe-area-inset-bottom,10px) + 10px)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;background:rgba(5,8,7,.92);backdrop-filter:blur(12px);border-top:1px solid var(--borde);padding:10px 20px calc(env(safe-area-inset-bottom,10px)+10px)}
 .tabbar>div{max-width:520px;margin:0 auto;display:flex}
 .tabbar button{flex:1;background:none;border:none;color:var(--mut);font:inherit;font-size:13px;cursor:pointer}
 .tabbar button.on{color:var(--acc)}
@@ -56,12 +56,12 @@ pre{background:var(--card);border:1px solid var(--borde);border-radius:16px;padd
 
 <section id="scr-inicio" class="screen active">
   <div class="top"><h1>MiFilza</h1><div class="pill"><span class="dot"></span>Motor</div></div>
-  <div class="search"><span></span><input id="q" placeholder="Buscar o escribir bundle ID..."></div>
+  <div class="search"><span>🔍</span><input id="q" placeholder="Buscar o Bundle ID (Enter para abrir)"></div>
   <div class="sec">ACCESOS DIRECTOS</div>
   <div class="card">
-    <div class="row" onclick="abrirRuta('/','Raíz del Sistema')"><div class="ico" style="background:#0c2a1b">🛸</div><div class="t"><b>Raíz del Sistema ( / )</b><small>Acceso irrestricto sin sandbox</small></div><span class="chev">›</span></div>
+    <div class="row" onclick="abrirRuta('/','Raíz del Sistema')"><div class="ico" style="background:#0c2a1b"></div><div class="t"><b>Raíz del Sistema ( / )</b><small>Acceso irrestricto</small></div><span class="chev">›</span></div>
     <div class="row" onclick="abrirRuta('/var/mobile/Documents','Documentos')"><div class="ico" style="background:#2a1c0c">📂</div><div class="t"><b>Documentos</b><small>/var/mobile/Documents</small></div><span class="chev">›</span></div>
-    <div class="row" onclick="abrirRuta('/var/mobile/Library/Preferences','Preferencias')"><div class="ico" style="background:#220c2a">⚙️</div><div class="t"><b>Preferencias (.plist)</b><small>/var/mobile/Library/Preferences</small></div><span class="chev">›</span></div>
+    <div class="row" onclick="abrirRuta('/var/mobile/Library/Preferences','Preferencias')"><div class="ico" style="background:#220c2a">⚙️</div><div class="t"><b>Preferencias</b><small>.plist files</small></div><span class="chev">›</span></div>
   </div>
   <div class="sec" id="appsTitle">APLICACIONES</div>
   <div class="card" id="appsList"><div class="row"><div class="t"><small>Cargando apps...</small></div></div></div>
@@ -79,10 +79,10 @@ pre{background:var(--card);border:1px solid var(--borde);border-radius:16px;padd
 </section>
 
 <section id="scr-ajustes" class="screen">
-  <div class="top"><h1 style="font-size:19px">️ Ajustes</h1><span class="badge ok">v2.0</span></div>
+  <div class="top"><h1 style="font-size:19px">⚙️ Ajustes</h1><span class="badge ok">v2.0</span></div>
   <div class="sec">LICENCIA &amp; VIGENCIA</div>
   <div class="card pad">
-    <div class="kv" style="padding:0 0 4px"><b style="color:var(--acc)">⚡ PRO (7 DÍAS)</b><span class="badge ok">ACTIVA</span></div>
+    <div class="kv" style="padding:0 0 4px"><b style="color:var(--acc)"> PRO (7 DÍAS)</b><span class="badge ok">ACTIVA</span></div>
     <small style="color:#0fbf6b;font-size:11px">◉ Acceso Ilimitado Autorizado</small>
     <div class="sec" style="margin:12px 0 0">TIEMPO RESTANTE</div>
     <div class="grid4">
@@ -95,7 +95,7 @@ pre{background:var(--card);border:1px solid var(--borde);border-radius:16px;padd
     <small style="color:var(--mut);font-size:10px">Progreso de validez 100%</small>
     <div style="border-top:1px solid var(--borde);margin-top:12px">
       <div class="kv"><span class="k">🔑 Llave:</span><span style="display:flex;align-items:center;min-width:0"><span class="v" id="lic-key">----</span><button class="copy" onclick="copiar(document.getElementById('lic-key').textContent)">⧉</button></span></div>
-      <div class="kv"><span class="k">📱 HWID:</span><span style="display:flex;align-items:center;min-width:0"><span class="v" id="lic-hwid">----</span><button class="copy" onclick="copiar(document.getElementById('lic-hwid').textContent)"></button></span></div>
+      <div class="kv"><span class="k">📱 HWID:</span><span style="display:flex;align-items:center;min-width:0"><span class="v" id="lic-hwid">----</span><button class="copy" onclick="copiar(document.getElementById('lic-hwid').textContent)">⧉</button></span></div>
     </div>
   </div>
   <button class="btn verde" onclick="toast('Función Cambiar Key')">🔑 Cambiar Key</button>
@@ -110,32 +110,30 @@ pre{background:var(--card);border:1px solid var(--borde);border-radius:16px;padd
   </div>
   <div class="sec">SEGURIDAD</div>
   <div class="card">
-    <div class="row" onclick="toggleAnti(this)"><div class="t"><b>🛡️ Anti-Captura / Grabación</b><small>Modo Oculto</small></div><div class="switch"><i></i></div></div>
-    <div class="row" onclick="toast('Caché limpiado')"><div class="t"><b> Limpiar Caché y Temporales</b><small>/tmp</small></div><span class="chev">›</span></div>
+    <div class="row" onclick="toggleAnti(this)"><div class="t"><b>🛡️ Anti-Captura</b><small>Modo Oculto</small></div><div class="switch"><i></i></div></div>
+    <div class="row" onclick="toast('Caché limpiado')"><div class="t"><b> Limpiar Caché</b><small>/tmp</small></div><span class="chev">›</span></div>
     <div class="row" onclick="toast('Motor re-sincronizado')"><div class="t"><b>⚡ Re-sincronizar Motor</b><small>MCMFilza</small></div><span class="chev">›</span></div>
   </div>
   <button class="btn rojo" onclick="pedir('cerrarSesion')">🚪 Cerrar Sesión</button>
 </section>
 
 <div class="tabbar"><div>
-  <button class="on" onclick="show('inicio',this)"> Inicio</button>
+  <button class="on" onclick="show('inicio',this)">🏠 Inicio</button>
   <button onclick="show('ajustes',this)">⚙️ Ajustes</button>
 </div></div>
 
 <div id="toast"></div>
 
 <script>
-// ===== PUENTE CON EL MOTOR (NO BORRAR) =====
 function pedir(accion,param){
   if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.motor){
     window.webkit.messageHandlers.motor.postMessage({accion:accion,param:param||''});
   } else {
-    // MODO PREVIEW (PC): datos simulados
     setTimeout(()=>{
-      if(accion==='apps') recibir({tipo:'apps',datos:['com.whatsapp.WhatsApp','com.spotify.client','com.instagram.android','com.tesla.app','com.discord','com.snapchat','com.twitter.android','com.google.chrome']});
-      if(accion==='ruta') recibir({tipo:'ruta',datos:'/var/mobile/Containers/Data/Application/'+param,ruta:'/var/mobile/Containers/Data/Application/'+param});
-      if(accion==='listar') recibir({tipo:'listar',datos:[{nombre:'Documents',esDir:true,size:0},{nombre:'Library',esDir:true,size:0},{nombre:'tmp',esDir:true,size:0},{nombre:'config.json',esDir:false,size:1240},{nombre:'data.db',esDir:false,size:58320}]});
-      if(accion==='leer') recibir({tipo:'leer',datos:'{\n  "user": "demo",\n  "theme": "oled",\n  "antiCapture": false\n}'});
+      if(accion==='apps') recibir({tipo:'apps',datos:['com.whatsapp.WhatsApp','com.spotify.client','com.instagram.ios','com.tesla.app','com.discord','com.snapchat','com.twitter.iphone','com.google.chrome.ios']});
+      if(accion==='ruta') recibir({tipo:'ruta',datos:'/var/mobile/Containers/Data/Application/'+param});
+      if(accion==='listar') recibir({tipo:'listar',datos:[{nombre:'Documents',esDir:true,size:0},{nombre:'Library',esDir:true,size:0},{nombre:'tmp',esDir:true,size:0},{nombre:'config.json',esDir:false,size:1240}]});
+      if(accion==='leer') recibir({tipo:'leer',datos:'{\n  "user": "demo",\n  "theme": "oled"\n}'});
       if(accion==='estado') recibir({tipo:'estado',motor:'ACTIVO',key:'MIFILZA-MASTER-2026',hwid:'3C28E48E',restante:604800});
     },300);
   }
@@ -151,11 +149,8 @@ function recibir(json){
     actualizarCountdown(json.restante||604800);
   }
 }
-// =============================================
 
 let rutaActual=null;
-let rutaStack=[];
-
 function show(id,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('scr-'+id).classList.add('active');
@@ -178,7 +173,6 @@ function abrirRuta(ruta,titulo){
   rutaActual=ruta;
   document.getElementById('filesTitle').textContent=titulo;
   document.getElementById('crumbs').textContent=ruta;
-  rutaStack=[{ruta:ruta,titulo:titulo}];
   pedir('listar',ruta);
   show('files');
 }
@@ -197,7 +191,6 @@ function pintarArchivos(items){
 
 function entrar(n){
   let nueva=rutaActual+'/'+n;
-  rutaStack.push({ruta:nueva,titulo:n});
   rutaActual=nueva;
   document.getElementById('filesTitle').textContent=n;
   document.getElementById('crumbs').textContent=nueva;
@@ -212,7 +205,7 @@ function leerArchivo(n){
 function toggleAnti(el){
   let sw=el.querySelector('.switch');
   sw.classList.toggle('on');
-  toast(sw.classList.contains('on')?'Anti-captura ACTIVADO':'Anti-captura DESACTIVADO');
+  toast(sw.classList.contains('on')?'Anti-captura ACTIVADO':'DESACTIVADO');
 }
 
 function setTheme(color,el){
@@ -223,7 +216,7 @@ function setTheme(color,el){
 }
 
 function copiar(txt){
-  if(navigator.clipboard){navigator.clipboard.writeText(txt);}
+  if(navigator.clipboard) navigator.clipboard.writeText(txt);
   toast('Copiado al portapapeles');
 }
 
@@ -241,15 +234,21 @@ function actualizarCountdown(seg){
   document.getElementById('cd-s').textContent=String(s).padStart(2,'0');
 }
 
-// Búsqueda
-document.getElementById('q').addEventListener('input',function(e){
-  let q=e.target.value.toLowerCase();
-  document.querySelectorAll('#appsList .row').forEach(r=>{
-    r.style.display=r.textContent.toLowerCase().includes(q)?'flex':'none';
+// 🔥 BÚSQUEDA Y SALTO DIRECTO (NUEVO)
+document.getElementById('q').addEventListener('keyup', function(e) {
+  let q = e.target.value.trim();
+  // Si presiona ENTER y hay texto, intenta abrirlo como Bundle ID
+  if (e.key === 'Enter' && q.length > 0) {
+    pedir('ruta', q);
+    return;
+  }
+  // Filtro normal de la lista
+  let lowerQ = q.toLowerCase();
+  document.querySelectorAll('#appsList .row').forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(lowerQ) ? 'flex' : 'none';
   });
 });
 
-// Inicializar
 pedir('apps');
 pedir('estado');
 </script>
